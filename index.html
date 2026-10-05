@@ -1,0 +1,924 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#0f766e">
+<link rel="manifest" href="/manifest.webmanifest">
+<title>Penubaka Village Fund</title>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<style>
+*{box-sizing:border-box}
+body{
+ margin:0;
+ font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+ background:#f5f7f8;
+ color:#17202a
+}
+header{
+ background:#0f766e;
+ color:white;
+ padding:22px 16px
+}
+header h1{margin:0;font-size:24px}
+header p{margin:6px 0 0;opacity:.9}
+main{max-width:760px;margin:auto;padding:16px}
+.card{
+ background:white;
+ border-radius:16px;
+ padding:18px;
+ margin:14px 0;
+ box-shadow:0 2px 10px #00000012
+}
+h2{margin-top:0}
+.grid{
+ display:grid;
+ grid-template-columns:repeat(2,1fr);
+ gap:10px
+}
+.stat{
+ background:#eef8f6;
+ padding:14px;
+ border-radius:12px
+}
+.stat b{
+ display:block;
+ font-size:22px;
+ margin-top:4px
+}
+input,button{
+ width:100%;
+ padding:12px;
+ border-radius:10px;
+ border:1px solid #ccd5d8;
+ font-size:16px
+}
+button{
+ background:#0f766e;
+ color:white;
+ border:0;
+ font-weight:600
+}
+.secondary{
+ background:#e8eeee;
+ color:#164e4a
+}
+.danger{background:#b42318}
+.amounts{
+ display:grid;
+ grid-template-columns:repeat(4,1fr);
+ gap:8px
+}
+.amounts button{
+ background:#e8eeee;
+ color:#164e4a
+}
+.row{display:flex;gap:8px}
+.row>*{flex:1}
+.small{
+ font-size:13px;
+ color:#667085
+}
+.hidden{display:none!important}
+.success{color:#067647}
+.error{color:#b42318}
+.table{
+ width:100%;
+ border-collapse:collapse
+}
+.table th,.table td{
+ text-align:left;
+ padding:9px 5px;
+ border-bottom:1px solid #eee;
+ font-size:14px
+}
+</style>
+</head>
+
+<body>
+
+<header>
+<h1>Penubaka Village Fund</h1>
+<p>Monthly contribution • ₹50 default</p>
+</header>
+
+<main>
+
+<div id="message" class="card hidden"></div>
+
+<section id="home">
+
+<div class="card">
+<h2>Fund Progress</h2>
+
+<div class="grid">
+
+<div class="stat">
+Target
+<b id="target">₹0</b>
+</div>
+
+<div class="stat">
+Collected
+<b id="collected">₹0</b>
+</div>
+
+</div>
+
+<p class="small" id="progressText"></p>
+</div>
+
+
+<div class="card">
+
+<h2>Make a Contribution</h2>
+
+<p>
+Choose an amount and pay using PhonePe / UPI.
+After payment, enter the UTR/reference number for verification.
+</p>
+
+<div class="amounts">
+
+<button onclick="setAmount(50)">₹50</button>
+
+<button onclick="setAmount(100)">₹100</button>
+
+<button onclick="setAmount(150)">₹150</button>
+
+<button onclick="setAmount(200)">₹200</button>
+
+</div>
+
+<br>
+
+<input
+id="amount"
+type="number"
+min="1"
+value="50"
+placeholder="Amount">
+
+<br><br>
+
+<button onclick="payNow()">
+Pay with PhonePe / UPI
+</button>
+
+</div>
+
+
+<div class="card">
+
+<h2>Submit Payment Details</h2>
+
+<input
+id="name"
+placeholder="Account-holder name">
+
+<br><br>
+
+<input
+id="mobile"
+inputmode="numeric"
+placeholder="Mobile number">
+
+<br><br>
+
+<input
+id="utr"
+placeholder="UTR / transaction reference">
+
+<br><br>
+
+<div class="row">
+
+<input
+id="month"
+type="number"
+min="1"
+max="12"
+placeholder="Month">
+
+<input
+id="year"
+type="number"
+placeholder="Year">
+
+</div>
+
+<br><br>
+
+<button onclick="submitPayment()">
+Submit for Verification
+</button>
+
+<p class="small">
+Your mobile number and UTR are visible only to the fund administrator.
+</p>
+
+</div>
+
+
+<div class="card">
+
+<h2>Verified Contributions</h2>
+
+<table class="table">
+
+<thead>
+
+<tr>
+<th>Name</th>
+<th>Month</th>
+<th>Amount</th>
+</tr>
+
+</thead>
+
+<tbody id="paidRows"></tbody>
+
+</table>
+
+</div>
+
+
+<div class="card">
+
+<button class="secondary" onclick="showAdmin()">
+Admin Login
+</button>
+
+</div>
+
+</section>
+
+
+<section id="admin" class="hidden">
+
+<div class="card" id="loginCard">
+
+<h2>Admin Login</h2>
+
+<input
+id="email"
+type="email"
+placeholder="Admin email">
+
+<br><br>
+
+<input
+id="password"
+type="password"
+placeholder="Password">
+
+<br><br>
+
+<button onclick="login()">
+Login
+</button>
+
+</div>
+
+
+<div id="adminPanel" class="hidden">
+
+<div class="card">
+
+<h2>Pending Payments</h2>
+
+<div id="pending"></div>
+
+</div>
+
+
+<div class="card">
+
+<h2>Fund Settings</h2>
+
+<p class="small">
+Bank details are intended to be entered once.
+Do not enter passwords, PINs or OTPs.
+</p>
+
+<input id="village" placeholder="Village name">
+
+<br><br>
+
+<input
+id="monthly"
+type="number"
+placeholder="Default monthly amount">
+
+<br><br>
+
+<input
+id="upi"
+placeholder="UPI ID (optional)">
+
+<br><br>
+
+<input
+id="upiname"
+placeholder="UPI name (optional)">
+
+<br><br>
+
+<input
+id="holder"
+placeholder="Bank account holder">
+
+<br><br>
+
+<input
+id="bank"
+placeholder="Bank name">
+
+<br><br>
+
+<input
+id="account"
+placeholder="Account number">
+
+<br><br>
+
+<input
+id="ifsc"
+placeholder="IFSC">
+
+<br><br>
+
+<button onclick="saveSettings()">
+Save Settings
+</button>
+
+</div>
+
+
+<div class="card">
+
+<button class="danger" onclick="logout()">
+Logout
+</button>
+
+</div>
+
+</div>
+
+</section>
+
+</main>
+
+
+<script>
+
+const SUPABASE_URL =
+"https://jegwmoundvbngyjgvytl.supabase.co";
+
+const SUPABASE_KEY =
+"sb_publishable_LH5kSeveJMUEp3vMj6Uppg_DGKckdbo";
+
+const sb =
+supabase.createClient(
+SUPABASE_URL,
+SUPABASE_KEY
+);
+
+let settings={
+monthly_amount:50,
+upi_id:"",
+upi_name:"",
+village_name:"Penubaka"
+};
+
+
+function msg(text,ok=true){
+
+const e=document.getElementById("message");
+
+e.textContent=text;
+
+e.className=
+"card "+(ok?"success":"error");
+
+window.scrollTo({
+top:0,
+behavior:"smooth"
+});
+
+setTimeout(
+()=>e.classList.add("hidden"),
+5000
+);
+
+}
+
+
+function setAmount(value){
+
+document.getElementById("amount").value=value;
+
+}
+
+
+function currentMonthYear(){
+
+const d=new Date();
+
+return [
+d.getMonth()+1,
+d.getFullYear()
+];
+
+}
+
+
+function payNow(){
+
+const amount=
+Number(
+document.getElementById("amount").value||50
+);
+
+if(amount<=0){
+
+msg(
+"Enter a valid amount.",
+false
+);
+
+return;
+
+}
+
+
+if(!settings.upi_id){
+
+msg(
+"UPI ID is not configured yet. Please use the payment instructions provided by the administrator.",
+false
+);
+
+return;
+
+}
+
+
+const url=
+`phonepe://pay?pa=${encodeURIComponent(settings.upi_id)}&pn=${encodeURIComponent(settings.upi_name||settings.village_name||"Penubaka Village Fund")}&am=${amount.toFixed(2)}&cu=INR&tn=${encodeURIComponent("Penubaka Village Fund")}`;
+
+window.location.href=url;
+
+}
+
+
+async function loadPublic(){
+
+const {data:s}=
+
+await sb
+.from("fund_settings")
+.select("*")
+.eq("id",1)
+.single();
+
+
+if(s){
+
+settings=s;
+
+document.querySelector("header h1")
+.textContent=
+s.village_name+" Village Fund";
+
+document.querySelector("header p")
+.textContent=
+`Monthly contribution • ₹${s.monthly_amount} default`;
+
+document.getElementById("amount")
+.value=s.monthly_amount;
+
+}
+
+
+const [month,year]=
+currentMonthYear();
+
+document.getElementById("month")
+.value=month;
+
+document.getElementById("year")
+.value=year;
+
+
+const {data:rows}=
+
+await sb
+.from("public_paid_contributions")
+.select("*")
+.order("verified_at",{ascending:false})
+.limit(200);
+
+
+const body=
+document.getElementById("paidRows");
+
+body.innerHTML="";
+
+let total=0;
+
+
+(rows||[]).forEach(row=>{
+
+total+=Number(row.amount||0);
+
+const tr=
+document.createElement("tr");
+
+tr.innerHTML=
+`<td>${escapeHtml(row.account_holder_name)}</td>
+<td>${row.contribution_month}/${row.contribution_year}</td>
+<td>₹${Number(row.amount).toFixed(0)}</td>`;
+
+body.appendChild(tr);
+
+});
+
+
+const {data:targetData}=
+
+await sb
+.from("monthly_targets")
+.select("target_amount")
+.eq("contribution_month",month)
+.eq("contribution_year",year)
+.maybeSingle();
+
+
+const target=
+Number(
+targetData?.target_amount||
+Number(settings.monthly_amount||50)*100
+);
+
+
+document.getElementById("collected")
+.textContent="₹"+total.toFixed(0);
+
+document.getElementById("target")
+.textContent="₹"+target.toFixed(0);
+
+
+document.getElementById("progressText")
+.textContent=
+target
+?Math.min(
+100,
+total/target*100
+).toFixed(0)+"% of target"
+:"";
+
+}
+
+
+function escapeHtml(value){
+
+return String(value??"")
+.replace(/[&<>"']/g,c=>({
+
+"&":"&amp;",
+"<":"&lt;",
+">":"&gt;",
+'"':"&quot;",
+"'":"&#39;"
+
+}[c]));
+
+}
+
+
+async function submitPayment(){
+
+const name=
+document.getElementById("name").value.trim();
+
+const mobile=
+document.getElementById("mobile").value.trim();
+
+const utr=
+document.getElementById("utr").value.trim();
+
+const amount=
+Number(
+document.getElementById("amount").value
+);
+
+const month=
+Number(
+document.getElementById("month").value
+);
+
+const year=
+Number(
+document.getElementById("year").value
+);
+
+
+if(
+!name||
+!mobile||
+!utr||
+!amount||
+!month||
+!year
+){
+
+msg(
+"Please fill all payment details.",
+false
+);
+
+return;
+
+}
+
+
+const {error}=
+
+await sb.rpc(
+"submit_payment",
+{
+p_account_holder_name:name,
+p_mobile_number:mobile,
+p_amount:amount,
+p_utr_reference:utr,
+p_contribution_month:month,
+p_contribution_year:year
+}
+);
+
+
+if(error){
+
+msg(
+error.message,
+false
+);
+
+return;
+
+}
+
+
+msg(
+"Payment submitted. It will appear publicly after admin verification."
+);
+
+loadPublic();
+
+}
+
+
+function showAdmin(){
+
+document
+.getElementById("home")
+.classList.add("hidden");
+
+document
+.getElementById("admin")
+.classList.remove("hidden");
+
+}
+
+
+async function login(){
+
+const email=
+document.getElementById("email").value;
+
+const password=
+document.getElementById("password").value;
+
+
+const {error}=
+
+await sb.auth.signInWithPassword({
+email,
+password
+});
+
+
+if(error){
+
+msg(
+error.message,
+false
+);
+
+return;
+
+}
+
+
+document
+.getElementById("loginCard")
+.classList.add("hidden");
+
+document
+.getElementById("adminPanel")
+.classList.remove("hidden");
+
+loadAdmin();
+
+}
+
+
+async function logout(){
+
+await sb.auth.signOut();
+
+location.reload();
+
+}
+
+
+async function loadAdmin(){
+
+const {data,error}=
+
+await sb
+.from("admin_pending_contributions")
+.select("*")
+.order("submitted_at",{ascending:false});
+
+
+if(error){
+
+msg(error.message,false);
+
+return;
+
+}
+
+
+const box=
+document.getElementById("pending");
+
+box.innerHTML="";
+
+
+if(!data?.length){
+
+box.textContent=
+"No pending payments.";
+
+return;
+
+}
+
+
+data.forEach(row=>{
+
+const div=
+document.createElement("div");
+
+div.className="card";
+
+div.innerHTML=
+
+`<b>${escapeHtml(row.account_holder_name)}</b>
+<br>
+Mobile: ${escapeHtml(row.mobile_number)}
+<br>
+Amount: ₹${row.amount}
+<br>
+Month: ${row.contribution_month}/${row.contribution_year}
+<br>
+UTR: ${escapeHtml(row.utr_reference)}
+<br><br>
+<button onclick="verify(${row.id},true)">
+Approve
+</button>
+<br><br>
+<button class="danger" onclick="verify(${row.id},false)">
+Reject
+</button>`;
+
+box.appendChild(div);
+
+});
+
+}
+
+
+async function verify(id,approve){
+
+const {error}=
+
+await sb.rpc(
+"admin_verify_payment",
+{
+p_contribution_id:id,
+p_approve:approve
+}
+);
+
+
+if(error){
+
+msg(error.message,false);
+
+return;
+
+}
+
+
+msg(
+approve
+?"Payment approved."
+:"Payment rejected."
+);
+
+loadAdmin();
+
+loadPublic();
+
+}
+
+
+async function saveSettings(){
+
+const values={
+
+village_name:
+document.getElementById("village")
+.value.trim()||"Penubaka",
+
+monthly_amount:
+Number(
+document.getElementById("monthly").value
+)||50,
+
+upi_id:
+document.getElementById("upi")
+.value.trim(),
+
+upi_name:
+document.getElementById("upiname")
+.value.trim(),
+
+bank_account_holder:
+document.getElementById("holder")
+.value.trim(),
+
+bank_name:
+document.getElementById("bank")
+.value.trim(),
+
+account_number:
+document.getElementById("account")
+.value.trim(),
+
+ifsc_code:
+document.getElementById("ifsc")
+.value.trim()
+
+};
+
+
+const {error}=
+
+await sb
+.from("fund_settings")
+.update(values)
+.eq("id",1);
+
+
+if(error){
+
+msg(
+error.message,
+false
+);
+
+return;
+
+}
+
+
+msg("Settings saved.");
+
+loadPublic();
+
+}
+
+
+loadPublic();
+
+</script>
+
+</body>
+  </html>
